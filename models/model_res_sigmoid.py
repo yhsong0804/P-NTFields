@@ -1282,7 +1282,8 @@ class Model():
         return torch.cat((Ypred0, Ypred1),dim=1)
      
     def plot(self,epoch,total_train_loss,alpha):
-        limit = 0.5
+        #limit = 0.5
+        limit = 2.0#change to 2.0
         xmin     = [-limit,-limit]
         xmax     = [limit,limit]
         spacing=limit/40.0

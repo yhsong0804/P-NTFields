@@ -47,4 +47,3 @@ print('Start voxelized pointcloud sampling.')
 voxelized_pointcloud_sampling.init(cfg)
 multiprocess(voxelized_pointcloud_sampling.voxelized_pointcloud_sampling)
 
-

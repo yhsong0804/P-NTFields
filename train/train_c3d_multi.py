@@ -3,8 +3,8 @@ sys.path.append('.')
 from models import model_res_sigmoid_multi as md
 from os import path
 
-modelPath = './Experiments/C3D_multi'
-
+#modelPath = './Experiments/C3D_multi'
+modelPath = './Experiments/c3d'
 
 dataPath = './datasets/c3d/'
 
