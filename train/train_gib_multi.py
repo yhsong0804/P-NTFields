@@ -3,7 +3,7 @@ sys.path.append('.')
 from models import model_res_sigmoid_multi as md
 from os import path
 
-modelPath = './Experiments/Gib_multi'
+modelPath = './Experiments/Gib_multi_2models'
 
 dataPath = './datasets/gibson/'
 

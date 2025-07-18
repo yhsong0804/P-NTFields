@@ -148,7 +148,7 @@ class NN(torch.nn.Module):
         self.dactout = DSigmoid_out()
         self.ddactout = DDSigmoid_out()
 
-        self.nl1=3
+        self.nl1=3#三层
         self.nl2=3
 
         self.encoder = torch.nn.ModuleList()
@@ -158,7 +158,7 @@ class NN(torch.nn.Module):
         self.encoder.append(Linear(2*h_size,h_size))
         self.encoder1.append(Linear(2*h_size,h_size))
         
-        for i in range(self.nl1-1):
+        for i in range(self.nl1-1): #3层 用一个循环来表示
             self.encoder.append(Linear(h_size, h_size)) 
             self.encoder1.append(Linear(h_size, h_size)) 
         
@@ -879,6 +879,7 @@ class Model():
         self.Params['Training']['Print Every * Epoch'] = 1
         self.Params['Training']['Save Every * Epoch'] = 100
         self.Params['Training']['Learning Rate'] = 1e-3#5e-5
+        self.Params['Training']['Learning Rate'] = 1e-4#5e-5
         self.Params['Training']['Random Distance Sampling'] = True
         self.Params['Training']['Use Scheduler (bool)'] = False
 
@@ -975,13 +976,15 @@ class Model():
         dataloader = FastTensorDataLoader(self.dataset.data, 
                     batch_size=int(self.Params['Training']['Batch Size']), 
                     shuffle=True)
-        
         '''
+        #print("==== I AM AT LINE 970 ====")
+
  
         beta = 1.0
         prev_diff = 1.0
         current_diff = 1.0
-        step = -2000.0/4000.0
+        step = -2000.0/8000.0
+        
         #step = 1.0
         tt =time.time()
 
@@ -1009,7 +1012,7 @@ class Model():
             alpha = min(max(0.5,0.5+0.5*step),1.07)
             #alpha2=min(alpha,1.0)
 
-            step+=1.0/4000/((int)(epoch/4000)+1.)
+            step+=1.0/8000/((int)(epoch/8000)+1.)
             gamma=0.001#max((4000.0-epoch)/4000.0/20,0.001)
 
             prev_state_queue.append(current_state)
@@ -1256,6 +1259,8 @@ class Model():
         #print(self.dim)
         Xsrc[0] = -0.25
         Xsrc[1] = -0.25
+        #Xsrc[0] = -1.5
+        #Xsrc[1] = -1.5
         XP       = np.zeros((len(X.flatten()),2*self.dim))#*((xmax[dims_n]-xmin[dims_n])/2 +xmin[dims_n])
         XP[:,:self.dim] = Xsrc
         XP[:,self.dim+0]  = X.flatten()

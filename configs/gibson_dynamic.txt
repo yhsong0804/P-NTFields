@@ -1,0 +1,17 @@
+# gibson_dynamic.txt
+
+# 实验名称
+exp_name = gibson_dynamic
+
+# 【关键】指向您存放动态场景的【父】文件夹
+data_dir = datasets/gibson_dynamic 
+
+# 【关键】告诉程序如何找到原始的、未归一化的动态模型文件
+# 我们用通配符 * 来匹配 t0, t1, t2, t3
+input_data_glob = /*/mesh_t*.obj
+
+# 空间的维度
+num_dim = 3
+
+# 总采样点数
+num_samples = 1000000

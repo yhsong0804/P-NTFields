@@ -33,4 +33,3 @@ class Database(torch.utils.data.Dataset):
         return self.len#2,8
 
 
-
