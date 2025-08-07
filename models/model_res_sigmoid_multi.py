@@ -982,7 +982,7 @@ class Model():
         loss_n = torch.mean(weighted_diff) + 0.01 * torch.norm(B)**2 / Yobs.shape[0] / Yobs.shape[1]
         loss = beta * loss_n
 
-        return loss, loss_n, diff # 我们依然可以返回原始的diff，用于观察
+        return loss, loss_n, diff # 我们依然可以返回原始的diff，用于观
 
     def train(self):
 
