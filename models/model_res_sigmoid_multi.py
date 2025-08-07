@@ -950,12 +950,32 @@ class Model():
         focal_weight0 = (1.0 - confidence0) ** focal_gamma
         focal_weight1 = (1.0 - confidence1) ** focal_gamma
         
-        # d. 【核心修正】: 不再乘以总的diff，而是为loss0和loss1分别乘以各自的权重
+        # d. 【核心修正】: 修正了验证打印的逻辑
+        with torch.no_grad():
+            # 创建用于分类的“掩码”
+            very_hard_mask = (Yobs[:,:,0] < 0.1)
+            mid_range_mask = (Yobs[:,:,0] >= 0.1) & (Yobs[:,:,0] < 0.9)
+            easy_mask = (Yobs[:,:,0] >= 0.9)
+
+            # 先用掩码筛选出对应类别的权重
+            weights_hard = focal_weight0[very_hard_mask]
+            # 然后再检查筛选出的结果是否为空，如果不为空再打印
+            if weights_hard.numel() > 0: # .numel() 用于获取Tensor中的元素总数，更稳健
+                print(f"\r  Hard Samples (speed<0.1)  -- Avg Weight: {weights_hard.mean():.4f}", end="")
+
+            weights_mid = focal_weight0[mid_range_mask]
+            if weights_mid.numel() > 0:
+                print(f"\n  Mid Samples (0.1<s<0.9) -- Avg Weight: {weights_mid.mean():.4f}", end="")
+
+            weights_easy = focal_weight0[easy_mask]
+            if weights_easy.numel() > 0:
+                print(f"\n  Easy Samples (speed>0.9)  -- Avg Weight: {weights_easy.mean():.4f}", end="")
+
+        # e. 【核心修正】: 不再乘以总的diff，而是为loss0和loss1分别乘以各自的权重
         weighted_loss0 = loss0 * focal_weight0
         weighted_loss1 = loss1 * focal_weight1
 
-        # e. 将加权后的损失相加，得到最终的加权diff
-        #    注意：这里的-4也需要被平均加权
+        # f. 将加权后的损失相加，得到最终的加权diff
         weighted_diff = weighted_loss0 + weighted_loss1 - 4.0 * (focal_weight0 + focal_weight1) / 2.0
 
         # --- 4. 最终损失计算 (使用新的加权损失) ---

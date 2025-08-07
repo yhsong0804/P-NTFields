@@ -14,7 +14,7 @@ import os
 # --- 您需要修改的配置 ---
 # 1. 设置包含 .off 文件的场景路径
 #    例如: './datasets/gibson_3smalltree/my_final_scene/0/'
-SCENE_PATH = './datasets/my_final_scene/0/'
+SCENE_PATH = './datasets/gibson_3smalltree/my_final_scene/0/'
 
 # 2. 设置要转换的 .off 文件名
 OFF_FILENAME = 'mesh_z_up_scaled.off'
