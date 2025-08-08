@@ -879,7 +879,6 @@ class Model():
         self.Params['Training']['Print Every * Epoch'] = 1
         self.Params['Training']['Save Every * Epoch'] = 100
         self.Params['Training']['Learning Rate'] = 1e-3#5e-5
-        self.Params['Training']['Learning Rate'] = 1e-4#5e-5
         self.Params['Training']['Random Distance Sampling'] = True
         self.Params['Training']['Use Scheduler (bool)'] = False
 
@@ -894,34 +893,46 @@ class Model():
         grad_x = torch.autograd.grad(y, x, grad_y, only_inputs=True, retain_graph=True, create_graph=create_graph)[0]
         
         return grad_x                                                                                                    
-    # ==============================================================================
-    # 【最终版Loss函数】用这个全新的、带有Focal Loss逻辑的函数，替换您文件中的旧函数
-    # ==============================================================================
     def Loss(self, points, Yobs, B, beta, gamma):
         
-        # --- 1. 原始网络计算部分 (完全不变) ---
-        # 这部分代码与您提供的原始代码完全一样，包括调用out_laplace
+      
+        start=time.time()
+        #tau, Xp = self.network.out(points)
+        #dtau, ltau = self.jacobian(tau, Xp)
+        end=time.time()
+        
+        #print(end-start)
+
+        start=time.time()
+        
+        
         tau, dtau, ltau, Xp = self.network.out_laplace(points, B)
         
+        end=time.time()
+
         D = Xp[:,:,self.dim:]-Xp[:,:,:self.dim]
-        T0 = torch.einsum('bij,bij->bi', D, D)
+        #print(D.shape)
+        T0 = torch.einsum('bij,bij->bi', D, D)#torch.norm(D, p=2, dim =1)**2
+        #print(T0.shape)
         
         lap0 = ltau[:,:,:self.dim].sum(-1) 
         lap1 = ltau[:,:,self.dim:].sum(-1) 
         
         DT0=dtau[:,:,:self.dim]
         DT1=dtau[:,:,self.dim:]
+        #print(DT0.shape)
+        T01    = T0*torch.einsum('bij,bij->bi', DT0, DT0)
+        T02    = -2*tau[:,:,0]*torch.einsum('bij,bij->bi', DT0, D)
 
-        T01 = T0*torch.einsum('bij,bij->bi', DT0, DT0)
-        T02 = -2*tau[:,:,0]*torch.einsum('bij,bij->bi', DT0, D)
-        T11 = T0*torch.einsum('bij,bij->bi', DT1, DT1)
-        T12 = 2*tau[:,:,0]*torch.einsum('bij,bij->bi', DT1, D)
+        T11    = T0*torch.einsum('bij,bij->bi', DT1, DT1)
+        T12    = 2*tau[:,:,0]*torch.einsum('bij,bij->bi', DT1, D)
         
-        T3 = tau[:,:,0]**2
+        T3    = tau[:,:,0]**2
         
         S0 = (T01-T02+T3)
         S1 = (T11-T12+T3)
-    
+       
+        #0.001
         sq_Ypred0 = 1/(torch.sqrt(S0)/T3+gamma*lap0)
         sq_Ypred1 = 1/(torch.sqrt(S1)/T3+gamma*lap1)
 
@@ -931,58 +942,12 @@ class Model():
         loss0 = sq_Ypred0/sq_Yobs0+sq_Yobs0/sq_Ypred0
         loss1 = sq_Ypred1/sq_Yobs1+sq_Yobs1/sq_Ypred1
 
-        # 这是每个点的原始损失，我们保留它
         diff = loss0 + loss1-4
-        
-        # --- 2. 【新增的核心修改】 Focal Loss自适应加权 ---
-        # 我们在这个位置，插入新的加权逻辑
-        with torch.no_grad():
-            # a. 计算网络对每个点预测的“自信程度” p
-            confidence0 = 1.0 - torch.abs(sq_Ypred0 / sq_Yobs0 - 1.0)
-            confidence1 = 1.0 - torch.abs(sq_Ypred1 / sq_Yobs1 - 1.0)
-            confidence0 = torch.clamp(confidence0, min=0.0)
-            confidence1 = torch.clamp(confidence1, min=0.0)
+        loss_n = torch.sum((loss0 + loss1-4))/Yobs.shape[0]/Yobs.shape[1]+0.01*torch.norm(B)**2/Yobs.shape[0]/Yobs.shape[1]
 
-        # b. 设置Focal Loss的调节旋钮 gamma
-        focal_gamma = 2.0
-        
-        # c. 计算最终的“关注度”权重
-        focal_weight0 = (1.0 - confidence0) ** focal_gamma
-        focal_weight1 = (1.0 - confidence1) ** focal_gamma
-        
-        # d. 【核心修正】: 修正了验证打印的逻辑
-        with torch.no_grad():
-            # 创建用于分类的“掩码”
-            very_hard_mask = (Yobs[:,:,0] < 0.1)
-            mid_range_mask = (Yobs[:,:,0] >= 0.1) & (Yobs[:,:,0] < 0.9)
-            easy_mask = (Yobs[:,:,0] >= 0.9)
+        loss = beta*loss_n
 
-            # 先用掩码筛选出对应类别的权重
-            weights_hard = focal_weight0[very_hard_mask]
-            # 然后再检查筛选出的结果是否为空，如果不为空再打印
-            if weights_hard.numel() > 0: # .numel() 用于获取Tensor中的元素总数，更稳健
-                print(f"\r  Hard Samples (speed<0.1)  -- Avg Weight: {weights_hard.mean():.4f}", end="")
-
-            weights_mid = focal_weight0[mid_range_mask]
-            if weights_mid.numel() > 0:
-                print(f"\n  Mid Samples (0.1<s<0.9) -- Avg Weight: {weights_mid.mean():.4f}", end="")
-
-            weights_easy = focal_weight0[easy_mask]
-            if weights_easy.numel() > 0:
-                print(f"\n  Easy Samples (speed>0.9)  -- Avg Weight: {weights_easy.mean():.4f}", end="")
-
-        # e. 【核心修正】: 不再乘以总的diff，而是为loss0和loss1分别乘以各自的权重
-        weighted_loss0 = loss0 * focal_weight0
-        weighted_loss1 = loss1 * focal_weight1
-
-        # f. 将加权后的损失相加，得到最终的加权diff
-        weighted_diff = weighted_loss0 + weighted_loss1 - 4.0 * (focal_weight0 + focal_weight1) / 2.0
-
-        # --- 4. 最终损失计算 (使用新的加权损失) ---
-        loss_n = torch.mean(weighted_diff) + 0.01 * torch.norm(B)**2 / Yobs.shape[0] / Yobs.shape[1]
-        loss = beta * loss_n
-
-        return loss, loss_n, diff # 我们依然可以返回原始的diff，用于观察
+        return loss, loss_n, diff
 
     def train(self):
 
@@ -1017,8 +982,7 @@ class Model():
         beta = 1.0
         prev_diff = 1.0
         current_diff = 1.0
-        step = -2000.0/8000.0
-        
+        step = -2000.0/4000.0
         #step = 1.0
         tt =time.time()
 
@@ -1046,7 +1010,7 @@ class Model():
             alpha = min(max(0.5,0.5+0.5*step),1.07)
             #alpha2=min(alpha,1.0)
 
-            step+=1.0/8000/((int)(epoch/8000)+1.)
+            step+=1.0/4000/((int)(epoch/4000)+1.)
             gamma=0.001#max((4000.0-epoch)/4000.0/20,0.001)
 
             prev_state_queue.append(current_state)

@@ -6,7 +6,7 @@ from os import path
 
 modelPath = './Experiments/Gib_multi_3smalltree/'
 
-dataPath = './datasets/gibson_3smalltree/my_final_scene/'
+dataPath = './datasets/gibson_3smalltree/'
 
 model    = md.Model(modelPath, dataPath, 3, 2, device='cuda:0')
 

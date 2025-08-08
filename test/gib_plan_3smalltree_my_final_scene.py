@@ -18,9 +18,9 @@ import open3d as o3d
 
 #wrong path? no influnce
 #modelPath = './Experiments/Gib'
-modelPath = './Experiments/Gib_multi_3smalltree'
+modelPath = './Experiments/Gib_multi_3smalltree/my_final_scene'
 
-dataPath = './datasets/gibson_3smalltree'
+dataPath = './datasets/gibson_3smalltree/my_final_scene/'
 womodel    = md.Model(modelPath, dataPath, 3, 2, device='cuda')
 
 
@@ -35,7 +35,7 @@ max_z = 0
 #gib_id = 1
 
 gib_id = 0
-v, f = igl.read_triangle_mesh("datasets/gibson_3smalltree/"+str(gib_id)+"/mesh_z_up_scaled.off")        
+v, f = igl.read_triangle_mesh("datasets/gibson_3smalltree/my_final_scene/"+str(gib_id)+"/mesh_z_up_scaled.off")        
 print(gib_id)
 
 vertices=v*20
@@ -45,7 +45,7 @@ vertices = torch.tensor(vertices, dtype=torch.float32, device='cuda')
 faces = torch.tensor(faces, dtype=torch.long, device='cuda')
 triangles = vertices[faces].unsqueeze(dim=0)
 
-B = np.load("datasets/gibson_3smalltree/"+str(gib_id)+"/B.npy")
+B = np.load("datasets/gibson_3smalltree/my_final_scene/"+str(gib_id)+"/B.npy")
 B = Variable(Tensor(B)).to('cuda')
 
 #核心路径生成循环
@@ -103,7 +103,7 @@ pcd = o3d.geometry.PointCloud()
 
 pcd.points = o3d.utility.Vector3dVector(xyz)
 #再读一次mesh 并scale+compute normals
-mesh = o3d.io.read_triangle_mesh("datasets/gibson_3smalltree/"+str(gib_id)+"/mesh_z_up_scaled.off")
+mesh = o3d.io.read_triangle_mesh("datasets/gibson_3smalltree/my_final_scene/"+str(gib_id)+"/mesh_z_up_scaled.off")
         
 mesh.scale(20, center=(0,0,0))
 
