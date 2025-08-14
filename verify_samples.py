@@ -5,7 +5,7 @@ import os
 
 # --- 您需要修改的配置 ---
 # 1. 设置您要检查的场景路径
-SCENE_PATH = './datasets/gibson_3smalltree/0/' # 检查场景0
+SCENE_PATH = './datasets/gibson_3smalltree/my_final_scene/0/' # 检查场景0 
 
 # 2. 设置要加载的障碍物模型文件名 (归一化后的 .off 文件)
 OBSTACLE_FILE = 'mesh_z_up_scaled.off'

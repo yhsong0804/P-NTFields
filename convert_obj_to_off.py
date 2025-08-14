@@ -4,7 +4,7 @@ import os
 
 # --- 您需要修改的配置 ---
 # 1. 设置您合并后的.obj文件所在的场景路径
-SCENE_PATH = './datasets/gibson_3smalltree/my_final_scene/0/'
+SCENE_PATH = './datasets/gibson_3smalltree/my_final_scene/1/'
 
 # 2. 设置输入的.obj文件名
 INPUT_OBJ = 'mesh_z_up.obj'

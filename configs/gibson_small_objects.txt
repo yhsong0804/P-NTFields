@@ -1,0 +1,7 @@
+exp_name = gibson_small_objects
+data_dir = datasets/gibson_3smalltree/my_final_scene
+split_file = datasets/gibson_3smalltree/my_final_scene/split_scene.npz
+input_data_glob = /*/mesh_z_up.obj
+num_dim = 3
+num_samples = 1500000
+# 增加采样数量以确保小障碍物被充分采样

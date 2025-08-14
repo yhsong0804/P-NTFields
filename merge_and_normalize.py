@@ -21,12 +21,12 @@ INPUT_FILES = [
     #'./datasets/gibson_3smalltree/0/large_rock_1.obj',    # <--- 修改这里：大石头1的路径
     #'./datasets/gibson_3smalltree/0/large_rock_2.obj',    # <--- 修改这里：大石头2的路径
     #'./datasets/gibson_3smalltree/0/small_rock.obj'       # <--- 修改这里：小石头的路径
-    './datasets/gibson_3smalltree/0/my_perfect_scene.obj', # <--- 修改这里：增大后直接合并场景的路径
+    './datasets/gibson_3smalltree/1/my_perfect_scene_2.5.obj', # <--- 修改这里：增大后直接合并场景的路径
 ]
 
 # 2. 定义您希望输出的、合并并归一化后的【单个】场景文件的路径
 #    建议在一个全新的数据集文件夹中创建它
-OUTPUT_FILE = './datasets/gibson_3smalltree/my_final_scene/0/mesh_z_up.obj' # <--- 修改这里：最终输出路径
+OUTPUT_FILE = './datasets/gibson_3smalltree/my_final_scene/1/mesh_z_up.obj' # <--- 修改这里：最终输出路径
 # --- 配置结束 ---
 
 
