@@ -1,6 +1,0 @@
-exp_name = arm_hang
-data_dir = datasets/arm_hang
-split_file = datasets/arm_hang/split_arm_hang.npz
-input_data_glob = /*.obj
-num_dim = 6
-num_samples = 2000000

@@ -1,6 +1,0 @@
-exp_name = gibson_hang
-data_dir = datasets/gibson_hang
-split_file = datasets/gibson_hang/split_scene_hang.npz
-input_data_glob = /*/mesh_z_up.obj
-num_dim = 3
-num_samples = 1000000

@@ -7,7 +7,7 @@ print("=== 训练脚本：Gibson场景 + 小障碍物优化 ===")
 
 modelPath = './Experiments/Gib_multi_small_objects'
 #dataPath = './datasets/gibson/'
-dataPath = './datasets/gibson_3smalltree/my_final_scene/'
+dataPath = './datasets/gibson_3smalltree/my_final_scene2/'
 
 print(f"模型保存路径: {modelPath}")
 print(f"数据路径: {dataPath}")

@@ -7,7 +7,7 @@ modelPath = './Experiments/Gib_multi'
 
 dataPath = './datasets/gibson/'
 
-model    = md.Model(modelPath, dataPath, 3, 2, device='cuda:0')
+model    = md.Model(modelPath, dataPath, 3, 2, device='cuda:1')
 
 model.train()
 

@@ -7,7 +7,7 @@
 # ==============================================================================
 
 
-# ！！！！！基础版本！！！！！！！！！！
+# ！！！！基础版本！！！！！！！！！！coarse_to_fine
 
 
 
@@ -206,36 +206,54 @@ def point_obstacle_distance(query_points, triangles_obs):
     return torch.sqrt(distances).squeeze()
 
 def point_append_list_static(X_list, Y_list, fine_sample_centers, triangles_obs, numsamples, dim, offset, margin):
-    """【静态场景采样循环】在一个循环中不断生成和筛选点，直到满足数量要求。"""
-    is_fine_sampling = fine_sample_centers is not None
-    OutsideSize, WholeSize = numsamples + 2, 0
+    """
+    【静态场景采样循环】
+    在一个循环中不断生成和筛选点，直到满足数量要求。
+    参数说明：
+        X_list, Y_list: 用于存储采样点和距离的列表
+        fine_sample_centers: 细采样中心点（None表示粗采样）
+        triangles_obs: 障碍物三角面片数据（Tensor）
+        numsamples: 需要采样的点数
+        dim: 空间维度
+        offset, margin: 距离筛选的下界和上界
+    返回：
+        采样点列表和距离列表
+    """
+    is_fine_sampling = fine_sample_centers is not None  # 判断是否为细采样阶段
+    OutsideSize, WholeSize = numsamples + 2, 0          # OutsideSize: 还需采样的点数，WholeSize: 已采样点数
     if is_fine_sampling and fine_sample_centers.shape[0] == 0:
         return X_list, Y_list
 
     while OutsideSize > 0:
-        batch_size = 8 * numsamples
+        batch_size = 8 * numsamples  # 每轮生成的点数
         if is_fine_sampling:
             # --- 细采样逻辑：在敏感点中心周围生成新点 ---
             num_centers = fine_sample_centers.shape[0]
+            # torch.randint 用于随机选取中心点索引
             center_indices = torch.randint(0, num_centers, (batch_size,), device='cuda')
             centers = fine_sample_centers[center_indices]
-            # perturbation = (torch.rand((batch_size, dim), dtype=torch.float32, device='cuda') - 0.5) * (2 * margin)
+            # torch.rand 生成[-0.5, 0.5]区间的扰动，乘以margin缩放
             perturbation = (torch.rand((batch_size, dim), dtype=torch.float32, device='cuda') - 0.5) * (0.5 * margin)
             P = centers + perturbation
         else:
             # --- 粗采样逻辑：在整个空间内均匀生成随机点 ---
             P  = torch.rand((batch_size,dim),dtype=torch.float32, device='cuda')-0.5
         
+        # 生成随机方向和长度，得到nP（扰动后的点）
         dP = torch.rand((batch_size,dim),dtype=torch.float32, device='cuda')-0.5
         rL = (torch.rand((batch_size,1),dtype=torch.float32, device='cuda'))*np.sqrt(dim)
+        # torch.nn.functional.normalize 用于归一化方向向量
         nP = P + torch.nn.functional.normalize(dP,dim=1)*rL
 
+        # 筛选在空间边界内的点
         PointsInside = torch.all((nP <= 0.5) & (nP >= -0.5), dim=1) & torch.all((P <= 0.5) & (P >= -0.5), dim=1)
         x0, x1 = P[PointsInside,:], nP[PointsInside,:]
         
         if x0.shape[0] <= 1: continue
 
+        # 计算采样点到障碍物的距离
         obs_distance0 = point_obstacle_distance(x0, triangles_obs)
+        # 距离筛选：只保留距离在(offset, margin)区间的点
         where_d = (obs_distance0 > offset) & (obs_distance0 < margin)
         
         if where_d.sum() == 0: continue
@@ -243,6 +261,7 @@ def point_append_list_static(X_list, Y_list, fine_sample_centers, triangles_obs,
         x0_f, x1_f, y0_f = x0[where_d], x1[where_d], obs_distance0[where_d]
         y1_f = point_obstacle_distance(x1_f, triangles_obs)
         
+        # 拼接采样点和距离，加入列表
         X_list.append(torch.cat((x0_f, x1_f), 1))
         Y_list.append(torch.cat((y0_f.unsqueeze(1), y1_f.unsqueeze(1)), 1))
         
@@ -254,47 +273,65 @@ def point_append_list_static(X_list, Y_list, fine_sample_centers, triangles_obs,
     return X_list, Y_list
 
 def point_rand_sample_bound_points(numsamples, dim, v, f, offset, margin):
-    """【静态场景总调度】执行完整的“粗-细”两阶段采样流程。"""
-    numsamples = int(numsamples)
+    """【静态场景总调度】执行完整的“粗-细”两阶段采样流程。
+    参数：
+        numsamples: 需要采样的点数
+        dim: 空间维度
+        v, f: 障碍物的顶点和面数据
+        offset: 距离筛选的下界
+        margin: 距离筛选的上界
+    返回：
+        sampled_points: 采样点的坐标
+        speed: 采样点的归一化距离
+    """
+    numsamples = int(numsamples)  # 确保采样点数为整数
+    # 将障碍物的顶点和面数据转换为张量，并添加一个维度以适配 BVH 查询
     triangles_obs = torch.tensor(v[f], dtype=torch.float32, device='cuda').unsqueeze(0)
-    
+
     # 1. 粗采样阶段
     print("--- Running Coarse Sampling Stage ---")
-    coarse_num = int(numsamples * 0.7)
     #coarse_num = int(numsamples * 0.5)
+    coarse_num = int(numsamples * 0.7)# 粗采样点数占总点数的 70%
+    # 调用 point_append_list_static 进行粗采样
     X_list, Y_list = point_append_list_static([], [], None, triangles_obs, coarse_num, dim, offset, margin)
-    
+
+    # 如果粗采样未找到任何点，直接返回空数组
     if not X_list:
         print("Warning: Coarse sampling did not find any points near obstacles.")
         return np.array([]), np.array([])
 
-    X_coarse = torch.cat(X_list, 0)[:coarse_num]
-    Y_coarse = torch.cat(Y_list, 0)[:coarse_num]
-    
+    # 将粗采样结果拼接为张量
+    X_coarse = torch.cat(X_list, 0)[:coarse_num]  # 粗采样点的坐标
+    Y_coarse = torch.cat(Y_list, 0)[:coarse_num]  # 粗采样点的距离
+
     # 2. 确定敏感区域
+    # 通过距离筛选出敏感区域的点（距离小于 margin 的 20%）
     sensitive_mask = Y_coarse[:, 0] < (margin * 0.2)
     #sensitive_mask = Y_coarse[:, 0] < (margin * 0.5)
     fine_centers = X_coarse[sensitive_mask][:, :dim]
     
     # 3. 细采样阶段
     print("--- Running Fine Sampling Stage ---")
-    fine_num = numsamples - X_coarse.shape[0]
+    fine_num = numsamples - X_coarse.shape[0]  # 细采样点数为总点数减去粗采样点数
+    # 如果需要细采样的点数大于 0 且存在敏感区域中心点
     if fine_num > 0 and fine_centers.shape[0] > 0:
         X_list_fine, Y_list_fine = point_append_list_static([], [], fine_centers, triangles_obs, fine_num, dim, offset/2.0, margin/2.0)
         #X_list_fine, Y_list_fine = point_append_list_static([], [], fine_centers, triangles_obs, fine_num, dim, offset, margin)
         # 4. 合并结果
         if X_list_fine:
-            X_fine = torch.cat(X_list_fine, 0)[:fine_num]
-            Y_fine = torch.cat(Y_list_fine, 0)[:fine_num]
-            X_final = torch.cat([X_coarse, X_fine], 0)
-            Y_final = torch.cat([Y_coarse, Y_fine], 0)
+            X_fine = torch.cat(X_list_fine, 0)[:fine_num]  # 细采样点的坐标
+            Y_fine = torch.cat(Y_list_fine, 0)[:fine_num]  # 细采样点的距离
+            X_final = torch.cat([X_coarse, X_fine], 0)  # 合并采样点的坐标
+            Y_final = torch.cat([Y_coarse, Y_fine], 0)  # 合并采样点的距离
         else:
-            X_final, Y_final = X_coarse, Y_coarse
+            X_final, Y_final = X_coarse, Y_coarse  # 如果细采样未找到点，仅返回粗采样结果
     else:
-        X_final, Y_final = X_coarse, Y_coarse
+        X_final, Y_final = X_coarse, Y_coarse  # 如果无需细采样，仅返回粗采样结果
 
+    # 将采样点的坐标和距离转换为 NumPy 数组
     sampled_points = X_final.detach().cpu().numpy()
     speed_dist = Y_final.detach().cpu().numpy()
+    # 对距离进行归一化处理，限制在 [offset, margin] 范围内
     speed = np.clip(speed_dist, a_min=offset, a_max=margin) / margin
     return sampled_points, speed
 
